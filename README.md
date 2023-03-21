@@ -10,7 +10,7 @@ We use similar approach as [aerospike](https://github.com/aerospike/aerospike-go
 Used TiKV Sidecar Public image: lobshunter/gcp-live-migration-tikv 
 
 ### Add the Sidecar Image into manifest
-Add content below to spec.tikv (replace ${CLUSTR_NAME}), it's only for cluster deploy by TiDB Operator and TLS is eanbled.
+For TiKV, add content below to spec.tikv (replace ${CLUSTR_NAME}), it's only for cluster deploy by TiDB Operator and TLS is eanbled.
 ```
         additionalVolumes:
           - name: pd-tls
@@ -25,6 +25,30 @@ Add content below to spec.tikv (replace ${CLUSTR_NAME}), it's only for cluster d
                 value: ${CLUSTR_NAME}
               - name: ROLE
                 value: tikv
+            image: lobshunter/gcp-live-migration-tikv # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
+            name: gcp-maintenance-script
+            volumeMounts:
+              - name: pd-tls
+                mountPath: /var/lib/pd-tls
+              - name: tikv-tls
+                mountPath: /var/lib/tikv-tls
+```
+
+For PD, add content below to spec.pd (replace ${CLUSTR_NAME}), it's only for cluster deploy by TiDB Operator and TLS is eanbled.
+```
+        additionalVolumes:
+          - name: pd-tls
+            secret:
+              secretName: ${CLUSTR_NAME}-pd-cluster-secret
+        additionalContainers:
+          - command:
+              - python3
+              - /main.py
+            env:
+              - name: CLUSTER_NAME
+                value: ${CLUSTR_NAME}
+              - name: ROLE
+                value: PD
             image: lobshunter/gcp-live-migration-tikv # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
             name: gcp-maintenance-script
             volumeMounts:
