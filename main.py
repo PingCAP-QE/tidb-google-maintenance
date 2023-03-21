@@ -19,6 +19,7 @@ import subprocess
 import os
 
 import requests
+from kubernetes import client, config
 
 METADATA_URL = 'http://metadata.google.internal/computeMetadata/v1/'
 METADATA_HEADERS = {'Metadata-Flavor': 'Google'}
@@ -32,6 +33,9 @@ PD_ADDR: str = f"https://{TC_NAME}-pd:2379"
 # DEBUG: bool = os.environ.get("CLUSTER_NAME") is not None
 DEBUG: bool = True  # FIXME
 
+#Init the Kubernetes client
+config.load_incluster_config()
+api = client.CoreV1Api()
 
 def wait_for_maintenance():
     url = METADATA_URL + 'instance/maintenance-event'
@@ -68,13 +72,12 @@ def wait_for_maintenance():
         if is_entering_maintenance(maintenance_event, last_maintenance_event):
             last_maintenance_event = maintenance_event
             if ROLE == "pd":
-                print("pd is entering maintenance, doing nothing")
-                continue
+                resign_leader()
             elif ROLE == "tikv":
                 evict_store()
                 store_evicted = True
             else:
-                print("tidb is entering maintenance, doing nothing")
+                evict_tidb()
         elif is_during_maintenance(maintenance_event, last_maintenance_event):
             pass
         else:  # not in maintenance
@@ -84,7 +87,7 @@ def wait_for_maintenance():
                     recover_restore()
                     store_evicted = False
             elif ROLE == "tidb":
-                print("tidb is not in maintenance, doing nothing")
+                delete_pod()
 
 
 def is_entering_maintenance(maintenance_event, last_maintenance_event) -> bool:
@@ -95,6 +98,21 @@ def is_entering_maintenance(maintenance_event, last_maintenance_event) -> bool:
 def is_during_maintenance(maintenance_event, last_maintenance_event) -> bool:
     return (maintenance_event is not None and
             maintenance_event == last_maintenance_event)
+
+def evict_tidb():
+    namespace = get_namespace()
+    pod = get_hostname()
+    patch = {"spec": {"containers": [{"name": "tidb", "image": "not-exist-image"}]}}
+    api.patch_namespaced_pod(name=pod, namespace=namespace, body=patch)
+
+def delete_pod():
+    namespace = get_namespace()
+    pod = get_hostname()
+    api.delete_namespaced_pod(name=pod, namespace=namespace)
+
+def get_namespace() -> str:
+    with open('/var/run/secrets/kubernetes.io/serviceaccount/namespace', 'r') as f:
+        return f.read().strip()
 
 def resign_leader():
     leader = get_leader()
@@ -111,7 +129,7 @@ def get_leader() -> str:
     return shell_cmd(f"pd-ctl member leader --pd {PD_ADDR} --key /var/lib/pd-tls/tls.key --cert /var/lib/pd-tls/tls.crt --cacert /var/lib/pd-tls/ca.crt | grep 'name' | cut -d: -f2").strip(' ",')
 
 def get_hostname() -> str:
-    return shell_cmd(f"hostname").strip("")
+    return shell_cmd(f"hostname").strip()
 
 def evict_store():
     store_id = get_store_id()

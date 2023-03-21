@@ -10,6 +10,20 @@ We use similar approach as [aerospike](https://github.com/aerospike/aerospike-go
 Used TiKV Sidecar Public image: lobshunter/gcp-live-migration-tikv 
 
 ### Add the Sidecar Image into manifest
+For TiDB, add content below to spec.titidb (replace ${CLUSTR_NAME}), it's only for cluster deploy by TiDB Operator and TLS is eanbled.
+```
+        additionalContainers:
+          - command:
+              - python3
+              - /main.py
+            env:
+              - name: CLUSTER_NAME
+                value: ${CLUSTR_NAME}
+              - name: ROLE
+                value: tidb
+            image: lobshunter/gcp-live-migration-tikv # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
+            name: gcp-maintenance-script
+```
 For TiKV, add content below to spec.tikv (replace ${CLUSTR_NAME}), it's only for cluster deploy by TiDB Operator and TLS is eanbled.
 ```
         additionalVolumes:
