@@ -13,6 +13,7 @@ We use similar approach as [aerospike](https://github.com/aerospike/aerospike-go
 Used Sidecar Public image: lobshunter/gcp-live-migration-tikv 
 
 ### Add the Sidecar Image into manifest
+#### For Cluster with TLS Enabled
 For TiDB, add content below to spec.tidb (replace ${CLUSTR_NAME})
 ```
         additionalContainers:
@@ -20,6 +21,8 @@ For TiDB, add content below to spec.tidb (replace ${CLUSTR_NAME})
               - python3
               - /main.py
             env:
+              - name: TLS
+                value: true
               - name: CLUSTER_NAME
                 value: ${CLUSTR_NAME}
               - name: ROLE
@@ -39,6 +42,8 @@ For TiKV, add content below to spec.tikv (replace ${CLUSTR_NAME})
               - python3
               - /main.py
             env:
+              - name: TLS
+                value: true
               - name: CLUSTER_NAME
                 value: ${CLUSTR_NAME}
               - name: ROLE
@@ -63,6 +68,8 @@ For PD, add content below to spec.pd (replace ${CLUSTR_NAME}),
               - python3
               - /main.py
             env:
+              - name: TLS
+                value: true
               - name: CLUSTER_NAME
                 value: ${CLUSTR_NAME}
               - name: ROLE
@@ -75,6 +82,58 @@ For PD, add content below to spec.pd (replace ${CLUSTR_NAME}),
               - name: tikv-tls
                 mountPath: /var/lib/tikv-tls
 ```
+#### For Cluster with TLS Disabled
+For TiDB, add content below to spec.tidb (replace ${CLUSTR_NAME})
+```
+        additionalContainers:
+          - command:
+              - python3
+              - /main.py
+            env:
+              - name: TLS
+                value: false
+              - name: CLUSTER_NAME
+                value: ${CLUSTR_NAME}
+              - name: ROLE
+                value: tidb
+            image: lobshunter/gcp-live-migration-tikv # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
+            name: gcp-maintenance-script
+```
+
+For TiKV, add content below to spec.tikv (replace ${CLUSTR_NAME})
+```
+        additionalContainers:
+          - command:
+              - python3
+              - /main.py
+            env:
+              - name: TLS
+                value: false
+              - name: CLUSTER_NAME
+                value: ${CLUSTR_NAME}
+              - name: ROLE
+                value: tikv
+            image: lobshunter/gcp-live-migration-tikv # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
+            name: gcp-maintenance-script
+```
+
+For PD, add content below to spec.pd (replace ${CLUSTR_NAME}), 
+```
+        additionalContainers:
+          - command:
+              - python3
+              - /main.py
+            env:
+              - name: TLS
+                value: false
+              - name: CLUSTER_NAME
+                value: ${CLUSTR_NAME}
+              - name: ROLE
+                value: PD
+            image: lobshunter/gcp-live-migration-tikv # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
+            name: gcp-maintenance-script
+```
+
 ### PD scheduler configuration
 Increase the PD leader-schedule limit after the cluster is deployed, through sql:
 ```

@@ -20,17 +20,19 @@ import os
 
 import requests
 from kubernetes import client, config
-from google.cloud import container_v1
 
 
 METADATA_URL = 'http://metadata.google.internal/computeMetadata/v1/'
 METADATA_HEADERS = {'Metadata-Flavor': 'Google'}
 
-# TODO: support non-tls cluster
 # ROLE: tidb, tikv, pd
 ROLE: str = os.environ["ROLE"]
 TC_NAME: str = os.environ["CLUSTER_NAME"]
-PD_ADDR: str = f"https://{TC_NAME}-pd:2379"
+TLS: str = os.environ["TLS"] if os.getenv("TLS") else "false"
+TIKV_TLS: str = "" if TLS == "false" else "--ca-path /var/lib/tikv-tls/ca.crt --cert-path /var/lib/tikv-tls/tls.crt --key-path /var/lib/tikv-tls/tls.key"
+PD_TLS: str = "" if TLS == "false" else "--cacert /var/lib/pd-tls/ca.crt --cert /var/lib/pd-tls/tls.crt --key /var/lib/pd-tls/tls.key"
+HTTP_PREFIX: str = "http://" if TLS == "false" else "https://"
+PD_ADDR: str = f"{HTTP_PREFIX}{TC_NAME}-pd:2379"
 
 # DEBUG: bool = os.environ.get("CLUSTER_NAME") is not None
 DEBUG: bool = True  # FIXME
@@ -102,6 +104,13 @@ def is_during_maintenance(maintenance_event, last_maintenance_event) -> bool:
     return (maintenance_event is not None and
             maintenance_event == last_maintenance_event)
 
+def schedule_tidb_node(cordon_node: bool):
+    node_name = get_hostname()
+    node = api.read_node_status(node_name)
+    # Update the node's metadata.
+    node.spec.unschedulable = cordon_node
+    api.patch_node_status(node_name, node)
+
 def evict_tidb():
     namespace = get_namespace()
     pod = get_hostname()
@@ -124,32 +133,32 @@ def resign_leader():
     # if yes, resign the leader
     # if no, do nothing
     if leader == hostname:
-        cmd = f"/pd-ctl member leader resign --pd {PD_ADDR} --key /var/lib/pd-tls/tls.key --cert /var/lib/pd-tls/tls.crt --cacert /var/lib/pd-tls/ca.crt"
+        cmd = f"/pd-ctl member leader resign --pd {PD_ADDR} {PD_TLS}"
         print(f"resigning pd leader, cmd [{cmd}]")
         shell_cmd(cmd)
 
 def get_leader() -> str:
-    return shell_cmd(f"pd-ctl member leader show --pd {PD_ADDR} --key /var/lib/pd-tls/tls.key --cert /var/lib/pd-tls/tls.crt --cacert /var/lib/pd-tls/ca.crt | grep 'name' | cut -d: -f2").strip().strip(',').strip('"')
+    return shell_cmd(f"pd-ctl member leader show --pd {PD_ADDR} {PD_TLS} | grep 'name' | cut -d: -f2").strip().strip(',').strip('"')
 
 def get_hostname() -> str:
     return shell_cmd(f"hostname").strip()
 
 def evict_store():
     store_id = get_store_id()
-    cmd = f"/pd-ctl scheduler add evict-leader-scheduler {store_id} --pd {PD_ADDR} --key /var/lib/pd-tls/tls.key --cert /var/lib/pd-tls/tls.crt --cacert /var/lib/pd-tls/ca.crt"
+    cmd = f"/pd-ctl scheduler add evict-leader-scheduler {store_id} --pd {PD_ADDR} {PD_TLS}"
     print(f"evicting store {store_id}, cmd [{cmd}]")
     shell_cmd(cmd)
 
 
 def recover_restore():
     store_id = get_store_id()
-    cmd = f"/pd-ctl scheduler remove evict-leader-scheduler-{store_id} --pd {PD_ADDR} --key /var/lib/pd-tls/tls.key --cert /var/lib/pd-tls/tls.crt --cacert /var/lib/pd-tls/ca.crt"
+    cmd = f"/pd-ctl scheduler remove evict-leader-scheduler-{store_id} --pd {PD_ADDR} {PD_TLS}"
     print(f"recovering store {store_id}, cmd [{cmd}]")
     shell_cmd(cmd)
 
 
 def get_store_id() -> str:
-    return shell_cmd("/tikv-ctl --host 127.0.0.1:20160 --key-path /var/lib/tikv-tls/tls.key --cert-path /var/lib/tikv-tls/tls.crt --ca-path /var/lib/tikv-tls/ca.crt store | grep 'store id' | cut -d: -f2").strip()
+    return shell_cmd("/tikv-ctl --host 127.0.0.1:20160 {TIKV_TLS} | grep 'store id' | cut -d: -f2").strip()
 
 
 def shell_cmd(cmd: str) -> str:
@@ -165,47 +174,6 @@ def shell_cmd(cmd: str) -> str:
         print(f'stdout: {stdout.decode("utf8").strip()}, stderr: {stderr.decode("utf8").strip()}')
 
     return stdout.decode("utf8")
-
-def schedule_tidb_node(cordon_node: bool):
-    # get metadata
-    # Get the project ID.
-    project_id = requests.get(METADATA_URL + "project/project-id", headers=METADATA_HEADERS).text
-
-    # Get the zone where the pod is running.
-    zone = requests.get(METADATA_URL + "instance/zone", headers=METADATA_HEADERS).text
-    zone = zone.split("/")[-1]
-
-    # Get the cluster ID.
-    cluster_name = requests.get(METADATA_URL + "instance/attributes/cluster-name", headers=METADATA_HEADERS).text
-    cluster_id = cluster_name.split("/")[-1]
-
-    # Get the node name.
-    node_name = requests.get(METADATA_URL + "instance/hostname", headers=METADATA_HEADERS).text
-    node_id = node_name.split("-")[-1]
-
-    if DEBUG:
-        print(f"project_id: {project_id}")
-        print(f"zone: {zone}")
-        print(f"cluster_id: {cluster_id}")
-        print(f"node_id: {node_id}")
-
-    client_v1 = container_v1.ClusterManagerClient()
-
-    # Get the node's metadata.
-    response = client_v1.get_node(project_id, zone, cluster_id, node_id)
-
-    # Set the node's `unschedulable` flag to `True` to cordon it.
-    node = response.node
-    node.unschedulable = cordon_node
-
-    # Update the node's metadata.
-    update_request = container_v1.UpdateNodeRequest(
-        node=node,
-        name=f"projects/{project_id}/zones/{zone}/clusters/{cluster_id}/nodes/{node_id}"
-    )
-    client_v1.update_node(request=update_request)
-
-    print(f"The node {node_id} in cluster {cluster_id} is now cordoned.")
 
 
 def main():
