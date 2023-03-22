@@ -1,16 +1,19 @@
 # tidb-google-maintenance
-We use similar approach as [aerospike](https://github.com/aerospike/aerospike-google-maintenance/blob/master/README.md): watch GCP maintenance events on TiKV/PD nodes and take proper actions:
-- TiKV: ecivt tikv store during maintenance.
-- PD: resign leader if the current PD instance is the PD leader
+We use similar approach as [aerospike](https://github.com/aerospike/aerospike-google-maintenance/blob/master/README.md): watch GCP maintenance events on TiDB/TiKV/PD nodes and take proper actions:
+- TiDB: Put the TiDB offline by cordon the TiDB node and delete the TiDB pod
+  - If the node pool for TiDB instance is auto-scale, the TiDB pod is moved to other node after delete pod
+  - If the node pool is not auto-scale, the TiDB pod is put offline until the node is uncordon.
+- TiKV: Ecivt leaders on TiKV store during maintenance.
+- PD: Resign leader if the current PD instance is the PD leader
 
  An additional container is added to run the maintenance watching script.
 
 ## Deploy
 ### Sidecar Image
-Used TiKV Sidecar Public image: lobshunter/gcp-live-migration-tikv 
+Used Sidecar Public image: lobshunter/gcp-live-migration-tikv 
 
 ### Add the Sidecar Image into manifest
-For TiDB, add content below to spec.titidb (replace ${CLUSTR_NAME}), it's only for cluster deploy by TiDB Operator and TLS is eanbled.
+For TiDB, add content below to spec.tidb (replace ${CLUSTR_NAME})
 ```
         additionalContainers:
           - command:
@@ -24,7 +27,8 @@ For TiDB, add content below to spec.titidb (replace ${CLUSTR_NAME}), it's only f
             image: lobshunter/gcp-live-migration-tikv # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
             name: gcp-maintenance-script
 ```
-For TiKV, add content below to spec.tikv (replace ${CLUSTR_NAME}), it's only for cluster deploy by TiDB Operator and TLS is eanbled.
+
+For TiKV, add content below to spec.tikv (replace ${CLUSTR_NAME})
 ```
         additionalVolumes:
           - name: pd-tls
@@ -48,7 +52,7 @@ For TiKV, add content below to spec.tikv (replace ${CLUSTR_NAME}), it's only for
                 mountPath: /var/lib/tikv-tls
 ```
 
-For PD, add content below to spec.pd (replace ${CLUSTR_NAME}), it's only for cluster deploy by TiDB Operator and TLS is eanbled.
+For PD, add content below to spec.pd (replace ${CLUSTR_NAME}), 
 ```
         additionalVolumes:
           - name: pd-tls
@@ -76,3 +80,6 @@ Increase the PD leader-schedule limit after the cluster is deployed, through sql
 ```
 set config pd `leader-schedule-limit`=100;
 ```
+
+## Limitation
+Current version is only for cluster deployed by TiDB Operator and TLS is eanbled.

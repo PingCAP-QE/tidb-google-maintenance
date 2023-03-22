@@ -124,12 +124,12 @@ def resign_leader():
     # if yes, resign the leader
     # if no, do nothing
     if leader == hostname:
-        cmd = f"/pd-ctl member resign --pd {PD_ADDR} --key /var/lib/pd-tls/tls.key --cert /var/lib/pd-tls/tls.crt --cacert /var/lib/pd-tls/ca.crt"
+        cmd = f"/pd-ctl member leader resign --pd {PD_ADDR} --key /var/lib/pd-tls/tls.key --cert /var/lib/pd-tls/tls.crt --cacert /var/lib/pd-tls/ca.crt"
         print(f"resigning pd leader, cmd [{cmd}]")
         shell_cmd(cmd)
 
 def get_leader() -> str:
-    return shell_cmd(f"pd-ctl member leader --pd {PD_ADDR} --key /var/lib/pd-tls/tls.key --cert /var/lib/pd-tls/tls.crt --cacert /var/lib/pd-tls/ca.crt | grep 'name' | cut -d: -f2").strip(' ",')
+    return shell_cmd(f"pd-ctl member leader show --pd {PD_ADDR} --key /var/lib/pd-tls/tls.key --cert /var/lib/pd-tls/tls.crt --cacert /var/lib/pd-tls/ca.crt | grep 'name' | cut -d: -f2").strip().strip(',').strip('"')
 
 def get_hostname() -> str:
     return shell_cmd(f"hostname").strip()
