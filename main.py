@@ -20,6 +20,8 @@ import os
 
 import requests
 from kubernetes import client, config
+from google.cloud import container_v1
+
 
 METADATA_URL = 'http://metadata.google.internal/computeMetadata/v1/'
 METADATA_HEADERS = {'Metadata-Flavor': 'Google'}
@@ -77,7 +79,8 @@ def wait_for_maintenance():
                 evict_store()
                 store_evicted = True
             else:
-                evict_tidb()
+                schedule_tidb_node(True)
+                delete_tidb_pod()
         elif is_during_maintenance(maintenance_event, last_maintenance_event):
             pass
         else:  # not in maintenance
@@ -87,7 +90,7 @@ def wait_for_maintenance():
                     recover_restore()
                     store_evicted = False
             elif ROLE == "tidb":
-                delete_pod()
+                schedule_tidb_node(False)
 
 
 def is_entering_maintenance(maintenance_event, last_maintenance_event) -> bool:
@@ -105,7 +108,7 @@ def evict_tidb():
     patch = {"spec": {"containers": [{"name": "tidb", "image": "not-exist-image"}]}}
     api.patch_namespaced_pod(name=pod, namespace=namespace, body=patch)
 
-def delete_pod():
+def delete_tidb_pod():
     namespace = get_namespace()
     pod = get_hostname()
     api.delete_namespaced_pod(name=pod, namespace=namespace)
@@ -162,6 +165,47 @@ def shell_cmd(cmd: str) -> str:
         print(f'stdout: {stdout.decode("utf8").strip()}, stderr: {stderr.decode("utf8").strip()}')
 
     return stdout.decode("utf8")
+
+def schedule_tidb_node(cordon_node: bool):
+    # get metadata
+    # Get the project ID.
+    project_id = requests.get(METADATA_URL + "project/project-id", headers=METADATA_HEADERS).text
+
+    # Get the zone where the pod is running.
+    zone = requests.get(METADATA_URL + "instance/zone", headers=METADATA_HEADERS).text
+    zone = zone.split("/")[-1]
+
+    # Get the cluster ID.
+    cluster_name = requests.get(METADATA_URL + "instance/attributes/cluster-name", headers=METADATA_HEADERS).text
+    cluster_id = cluster_name.split("/")[-1]
+
+    # Get the node name.
+    node_name = requests.get(METADATA_URL + "instance/hostname", headers=METADATA_HEADERS).text
+    node_id = node_name.split("-")[-1]
+
+    if DEBUG:
+        print(f"project_id: {project_id}")
+        print(f"zone: {zone}")
+        print(f"cluster_id: {cluster_id}")
+        print(f"node_id: {node_id}")
+
+    client_v1 = container_v1.ClusterManagerClient()
+
+    # Get the node's metadata.
+    response = client_v1.get_node(project_id, zone, cluster_id, node_id)
+
+    # Set the node's `unschedulable` flag to `True` to cordon it.
+    node = response.node
+    node.unschedulable = cordon_node
+
+    # Update the node's metadata.
+    update_request = container_v1.UpdateNodeRequest(
+        node=node,
+        name=f"projects/{project_id}/zones/{zone}/clusters/{cluster_id}/nodes/{node_id}"
+    )
+    client_v1.update_node(request=update_request)
+
+    print(f"The node {node_id} in cluster {cluster_id} is now cordoned.")
 
 
 def main():
