@@ -3,8 +3,7 @@
 We use similar approach as [aerospike](https://github.com/aerospike/aerospike-google-maintenance/blob/master/README.md): watch GCP maintenance events on TiDB/TiKV/PD nodes and take proper actions:
 
 - TiDB: Put the TiDB offline by cordon the TiDB node and delete the TiDB pod
-  - If the node pool for TiDB instance is auto-scale, the TiDB pod is moved to other node after delete pod
-  - If the node pool is not auto-scale, the TiDB pod is put offline until the node is uncordon.
+  (the node pool of TiDB instance MUST be set to auto-scale, the cordon node is expected to be reclaimed by auto-scaler)
 - TiKV: Ecivt leaders on TiKV store during maintenance.
 - PD: Resign leader if the current PD instance is the PD leader
 
