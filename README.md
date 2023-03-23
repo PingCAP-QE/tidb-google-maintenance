@@ -177,3 +177,7 @@ set config pd `leader-schedule-limit`=100;
 ## Limitation
 
 Current version is only for cluster deployed by TiDB Operator and TLS is eanbled.
+
+## To Simulate a GCP Maintenance Event
+
+see: <https://cloud.google.com/compute/docs/instances/simulating-host-maintenance>
