@@ -13,7 +13,7 @@ We use similar approach as [aerospike](https://github.com/aerospike/aerospike-go
 
 ### Sidecar Image
 
-Used Sidecar Public image: lobshunter/gcp-live-migration-tikv
+Used Sidecar Public image: lobshunter/tidb-gcp-live-migration
 
 ### Add the Sidecar Image into manifest
 
@@ -40,7 +40,7 @@ kubectl apply -f rbac.yaml
                 value: ${CLUSTR_NAME}
               - name: ROLE
                 value: tidb
-            image: lobshunter/gcp-live-migration-tikv # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
+            image: lobshunter/tidb-gcp-live-migration # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
             name: gcp-maintenance-script
 ```
 
@@ -62,7 +62,7 @@ For TiKV, add content below to spec.tikv (replace ${CLUSTR_NAME})
                 value: ${CLUSTR_NAME}
               - name: ROLE
                 value: tikv
-            image: lobshunter/gcp-live-migration-tikv # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
+            image: lobshunter/tidb-gcp-live-migration # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
             name: gcp-maintenance-script
             volumeMounts:
               - name: pd-tls
@@ -89,7 +89,7 @@ For PD, add content below to spec.pd (replace ${CLUSTR_NAME}),
                 value: ${CLUSTR_NAME}
               - name: ROLE
                 value: PD
-            image: lobshunter/gcp-live-migration-tikv # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
+            image: lobshunter/tidb-gcp-live-migration # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
             name: gcp-maintenance-script
             volumeMounts:
               - name: pd-tls
@@ -126,7 +126,7 @@ kubectl apply -f rbac.yaml
                 valueFrom:
                   fieldRef:
                     fieldPath: spec.nodeName
-            image: lobshunter/gcp-live-migration-tikv # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
+            image: lobshunter/tidb-gcp-live-migration # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
             name: gcp-maintenance-script
 ```
 
@@ -144,7 +144,7 @@ For TiKV, add content below to spec.tikv (replace ${CLUSTR_NAME})
                 value: ${CLUSTR_NAME}
               - name: ROLE
                 value: tikv
-            image: lobshunter/gcp-live-migration-tikv # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
+            image: lobshunter/tidb-gcp-live-migration # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
             name: gcp-maintenance-script
 ```
 
@@ -162,7 +162,7 @@ For PD, add content below to spec.pd (replace ${CLUSTR_NAME}),
                 value: ${CLUSTR_NAME}
               - name: ROLE
                 value: PD
-            image: lobshunter/gcp-live-migration-tikv # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
+            image: lobshunter/tidb-gcp-live-migration # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
             name: gcp-maintenance-script
 ```
 
@@ -173,10 +173,6 @@ Increase the PD leader-schedule limit after the cluster is deployed, through sql
 ```SQL
 set config pd `leader-schedule-limit`=100;
 ```
-
-## Limitation
-
-Current version is only for cluster deployed by TiDB Operator and TLS is eanbled.
 
 ## To Simulate a GCP Maintenance Event
 
