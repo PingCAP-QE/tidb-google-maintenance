@@ -21,6 +21,13 @@ Used Sidecar Public image: lobshunter/gcp-live-migration-tikv
 
 For TiDB, add content below to spec.tidb (replace ${CLUSTR_NAME})
 
+run
+
+```sh
+# replace ${SERVICEACCOUNT}, ${NAMESPACE} and ${CLUSTR_NAME}
+kubectl apply -f rbac.yaml
+```
+
 ```yaml
         additionalContainers:
           - command:
@@ -94,6 +101,13 @@ For PD, add content below to spec.pd (replace ${CLUSTR_NAME}),
 #### For Cluster with TLS Disabled
 
 For TiDB, add content below to spec.tidb (replace ${CLUSTR_NAME})
+
+run
+
+```sh
+# replace ${SERVICEACCOUNT}, ${NAMESPACE} and ${CLUSTR_NAME}
+kubectl apply -f rbac.yaml
+```
 
 ```yaml
         additionalContainers:
