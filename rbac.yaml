@@ -1,0 +1,54 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ${CLUSTER_NAME}-cordon-tidb-node
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - "nodes"
+      - "nodes/status"
+    verbs:
+      - "get"
+      - "patch"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ${CLUSTER_NAME}-cordon-tidb-node
+  namespace: ${NAMESPACE}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ${CLUSTER_NAME}-cordon-tidb-node
+subjects:
+  - kind: ServiceAccount
+    name: ${SERVICEACCOUNT}
+    namespace: ${NAMESPACE}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ${CLUSTER_NAME}-delete-tidb-pod
+  namespace: ${NAMESPACE}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ${CLUSTER_NAME}-delete-tidb-pod
+  namespace: ${NAMESPACE}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ${CLUSTER_NAME}-delete-tidb-pod
+subjects:
+  - kind: ServiceAccount
+    name: ${SERVICEACCOUNT}
+    namespace: ${NAMESPACE}
