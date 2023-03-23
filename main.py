@@ -178,10 +178,14 @@ def shell_cmd(cmd: str) -> str:
         raise Exception(proc.returncode, stdout.decode(
             "utf8"), stderr.decode("utf8"), cmd)
 
-    if DEBUG:
-        print(f'cmd: {cmd}, stdout: {stdout.decode("utf8").strip()}, stderr: {stderr.decode("utf8").strip()}')
+    debug(f'cmd: {cmd}, stdout: {stdout.decode("utf8").strip()}, stderr: {stderr.decode("utf8").strip()}')
 
     return stdout.decode("utf8")
+
+
+def debug(s: str):
+    if DEBUG:
+        print(s)
 
 
 def main():
