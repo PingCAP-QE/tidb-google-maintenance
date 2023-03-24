@@ -174,3 +174,5 @@ set config pd `leader-schedule-limit`=100;
 ## To Simulate a GCP Maintenance Event
 
 see: <https://cloud.google.com/compute/docs/instances/simulating-host-maintenance>
+
+And a script to simulate the effect when live migration happened.
