@@ -40,6 +40,10 @@ kubectl apply -f rbac.yaml
                 value: ${CLUSTR_NAME}
               - name: ROLE
                 value: tidb
+              - name: NODENAME
+                valueFrom:
+                  fieldRef:
+                    fieldPath: spec.nodeName
             image: lobshunter/tidb-gcp-live-migration # NOTE: it's better to use GCR, because pulling from dockerhub can be slow
             name: gcp-maintenance-script
 ```
@@ -74,10 +78,6 @@ For TiKV, add content below to spec.tikv (replace ${CLUSTR_NAME})
 For PD, add content below to spec.pd (replace ${CLUSTR_NAME}),
 
 ```yaml
-        additionalVolumes:
-          - name: pd-tls
-            secret:
-              secretName: ${CLUSTR_NAME}-pd-cluster-secret
         additionalContainers:
           - command:
               - python3
@@ -94,8 +94,6 @@ For PD, add content below to spec.pd (replace ${CLUSTR_NAME}),
             volumeMounts:
               - name: pd-tls
                 mountPath: /var/lib/pd-tls
-              - name: tikv-tls
-                mountPath: /var/lib/tikv-tls
 ```
 
 #### For Cluster with TLS Disabled
@@ -121,7 +119,6 @@ kubectl apply -f rbac.yaml
                 value: ${CLUSTR_NAME}
               - name: ROLE
                 value: tidb
-                <!-- FIXME -->
               - name: NODENAME
                 valueFrom:
                   fieldRef:
@@ -177,3 +174,5 @@ set config pd `leader-schedule-limit`=100;
 ## To Simulate a GCP Maintenance Event
 
 see: <https://cloud.google.com/compute/docs/instances/simulating-host-maintenance>
+
+And a script to simulate the effect when live migration happened.
