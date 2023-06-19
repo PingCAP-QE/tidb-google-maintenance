@@ -1,20 +1,15 @@
-FROM alpine as builder
+ARG TIDB_VERSION=v6.6.0
 
-ARG arch=amd64
-ARG tidbversion=v6.6.0
+FROM pingcap/pd:${TIDB_VERSION} as pd-builder
+FROM pingcap/tikv:${TIDB_VERSION} as tikv-builder
 
-WORKDIR /
-
-RUN wget https://tiup-mirrors.pingcap.com/ctl-${tidbversion}-linux-${arch}.tar.gz && \
-    tar -xzf ctl-${tidbversion}-linux-${arch}.tar.gz
-
-FROM python:3.11-slim-buster
+FROM library/python:3.11-slim-buster
 
 COPY requirements.txt /requirements.txt
 RUN pip3 install -r /requirements.txt
 
-COPY --from=builder /tikv-ctl /tikv-ctl
-COPY --from=builder /pd-ctl /pd-ctl
+COPY --from=tikv-builder /tikv-ctl /tikv-ctl
+COPY --from=pd-builder /pd-ctl /pd-ctl
 
 ENV PYTHONUNBUFFERED=1
 COPY main.py /main.py
