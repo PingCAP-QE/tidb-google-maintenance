@@ -1,4 +1,4 @@
-TIDB_VERSION ?= v6.6.0
+TIDB_VERSION ?= v7.1.0
 ARCH ?= amd64
 IMAGE ?= pingcap/tidb-gcp-live-migration
 IMAGE_TAG ?= $(TIDB_VERSION)

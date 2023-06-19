@@ -1,4 +1,4 @@
-ARG TIDB_VERSION=v6.6.0
+ARG TIDB_VERSION=v7.1.0
 
 FROM pingcap/pd:${TIDB_VERSION} as pd-builder
 FROM pingcap/tikv:${TIDB_VERSION} as tikv-builder

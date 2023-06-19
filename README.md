@@ -13,9 +13,9 @@ We use similar approach as [aerospike](https://github.com/aerospike/aerospike-go
 
 ### Sidecar Image
 
-Used Sidecar Public image: pingcap/tidb-gcp-live-migration:${TIDB_VERSION} (e.g. pingcap/tidb-gcp-live-migration:v6.6.0)
+Used Sidecar Public image: pingcap/tidb-gcp-live-migration:${TIDB_VERSION} (e.g. pingcap/tidb-gcp-live-migration:v7.1.0)
 
-or build the image on your own: `TIDB_VERSION=v6.6.0 IMAGE=${YOUR_IMAGE}/tidb-gcp-live-migration make image-release`
+or build the image on your own: `TIDB_VERSION=v7.1.0 IMAGE=${YOUR_IMAGE}/tidb-gcp-live-migration make image-release`
 
 ### Add the Sidecar Image into manifest
 
@@ -46,7 +46,7 @@ kubectl apply -f rbac.yaml
                 valueFrom:
                   fieldRef:
                     fieldPath: spec.nodeName
-            image: pingcap/tidb-gcp-live-migration:v6.6.0
+            image: pingcap/tidb-gcp-live-migration:v7.1.0
             name: gcp-maintenance-script
 ```
 
@@ -68,7 +68,7 @@ For TiKV, add content below to spec.tikv (replace ${CLUSTR_NAME})
                 value: ${CLUSTR_NAME}
               - name: ROLE
                 value: tikv
-            image: pingcap/tidb-gcp-live-migration:v6.6.0
+            image: pingcap/tidb-gcp-live-migration:v7.1.0
             name: gcp-maintenance-script
             volumeMounts:
               - name: pd-tls
@@ -91,7 +91,7 @@ For PD, add content below to spec.pd (replace ${CLUSTR_NAME}),
                 value: ${CLUSTR_NAME}
               - name: ROLE
                 value: PD
-            image: pingcap/tidb-gcp-live-migration:v6.6.0
+            image: pingcap/tidb-gcp-live-migration:v7.1.0
             name: gcp-maintenance-script
             volumeMounts:
               - name: pd-tls
@@ -125,7 +125,7 @@ kubectl apply -f rbac.yaml
                 valueFrom:
                   fieldRef:
                     fieldPath: spec.nodeName
-            image: pingcap/tidb-gcp-live-migration:v6.6.0
+            image: pingcap/tidb-gcp-live-migration:v7.1.0
             name: gcp-maintenance-script
 ```
 
@@ -143,7 +143,7 @@ For TiKV, add content below to spec.tikv (replace ${CLUSTR_NAME})
                 value: ${CLUSTR_NAME}
               - name: ROLE
                 value: tikv
-            image: pingcap/tidb-gcp-live-migration:v6.6.0
+            image: pingcap/tidb-gcp-live-migration:v7.1.0
             name: gcp-maintenance-script
 ```
 
@@ -161,7 +161,7 @@ For PD, add content below to spec.pd (replace ${CLUSTR_NAME}),
                 value: ${CLUSTR_NAME}
               - name: ROLE
                 value: PD
-            image: pingcap/tidb-gcp-live-migration:v6.6.0
+            image: pingcap/tidb-gcp-live-migration:v7.1.0
             name: gcp-maintenance-script
 ```
 
